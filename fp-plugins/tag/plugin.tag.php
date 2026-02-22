@@ -1,7 +1,7 @@
 <?php
 /*
  * Plugin Name: Tag
- * Version: 2.6.5
+ * Version: 2.6.6
  * Plugin URI: https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/tag
  * Description: Allows using tags in FlatPress. This plugin requires BBCode
  * Author: Evaggelos Balaskas
