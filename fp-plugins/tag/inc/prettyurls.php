@@ -13,7 +13,8 @@ class tag_prettyurls {
 		if (isset($this->original) && is_object($this->original) && method_exists($this->original, $name)) {
 			return call_user_func_array(array($this->original, $name), $arguments);
 		}
-		return $arguments[0] ?? null;
+		// Safe no-op fallback: return first arg if present
+		return $arguments [0] ?? null;
 	}
 
 	// The "original" PrettyURLs
@@ -100,13 +101,20 @@ class tag_prettyurls {
 			$l = $this->tag_link;
 			// Code by plugin.prettyurls.php, by NoWhereMan
 				$q = &$fpdb->getQuery();
-				list($caption, $id) = call_user_func(array(&$q, 'get'. $nextprev));
-				$page = 1;
-				if (isset($this->fp_params ['paged']) && $this->fp_params ['paged'] > 1)
-					$page = $this->fp_params ['paged'];
-				$page += $v;
-				if ($page > 0)
+				$method = 'get' . $nextprev;
+				if (!is_object($q) || !is_callable(array($q, $method))) {
+					return array();
+				}
+				list($caption, $id) = call_user_func(array($q, $method));
+				// No next/prev page => do not render empty links ("ghost buttons")
+				if (!$id) {
+					return array();
+				}
+				// For list views FPDB_Query returns the target page number as $id
+				$page = (int) $id;
+				if ($page > 0) {
 					$l .= 'page/' . $page . '/';
+				}
 				return array($caption, $l);
 			// End Code by PrettyURLs
 		} else {
