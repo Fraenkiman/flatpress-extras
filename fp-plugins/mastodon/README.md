@@ -104,7 +104,7 @@ The plugin stores these configuration values:
 - OAuth authorization code
 - OAuth access token
 
-However, the analyzed code uses the **OAuth access token** for API access.
+However, the code uses the **OAuth access token** for API access.
 
 That means:
 
@@ -465,3 +465,8 @@ The safest order is:
 6. run a manual sync
 7. check `last sync`, `last error`, and `sync.log`
 8. only then rely on the automatic daily sync
+
+---
+
+## License
+The Mastodon plugin code follows the FlatPress project license.
