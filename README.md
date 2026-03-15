@@ -22,6 +22,7 @@ A few of them are known to be not functional correctly, some others have still t
 | [lastcommentsadmin](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/lastcommentsadmin) | Manage the cache of the LastComments plugin. | ✔️ Works fine! :) |
 | [macros](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/macros) |  | ❔ *unknown* |
 | [markdown](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/markdown) | Provides [Markdown](http://daringfireball.net/projects/markdown/) markup in posts. | ✔️ Works fine! :) |
+| [Mastodon](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/mastodon) | Synchronizes FlatPress entries and comments with Mastodon. | ✔️ Works fine! :) |
 | [moreonblog](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/moreonblog) | The widget displays links to the other random posts on the blog. | ✔️ Works from 4 entries! |
 | [ping](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/ping) |  | ❔ *unknown* |
 | [remoteposting](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/remoteposting) |  | ❔ *unknown* |
