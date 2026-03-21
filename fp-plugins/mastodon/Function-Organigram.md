@@ -9,7 +9,7 @@ The layout is intentionally hierarchical so responsibilities, call paths, and im
 ## Notes
 
 - The focus is the plugin itself.
-- The descriptions are derived from the analyzed source code.
+- The descriptions are derived from the source code.
 - The four admin methods `setup()`, `main()`, and `onsubmit()` are implemented at the end of the file inside the `AdminPanelAction` class and are therefore included here.
 - The terms **Entry** and **Comment** follow the wording used by the source code.
 
