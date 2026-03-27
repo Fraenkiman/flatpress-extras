@@ -8,6 +8,10 @@
 
 	<fieldset><legend>{$plang.config_head|escape}</legend>
 		<dl class="option-list">
+
+			<dt><label for="username">{$plang.username|escape}</label></dt>
+			<dd><input type="text" class="regular-text" id="username" name="username" value="{$mastodon_cfg.username|escape}"></dd>
+
 			<dt><label for="instance_url">{$plang.instance_url|escape}</label></dt>
 			<dd><input type="url" class="regular-text" id="instance_url" name="instance_url" value="{$mastodon_cfg.instance_url|escape}"></dd>
 

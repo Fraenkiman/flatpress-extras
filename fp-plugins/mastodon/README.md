@@ -466,7 +466,5 @@ The safest order is:
 7. check `last sync`, `last error`, and `sync.log`
 8. only then rely on the automatic daily sync
 
----
-
-## License
-The Mastodon plugin code follows the FlatPress project license.
+## Resources for Developers:
+- [Functional Organization Chart](Function-Organigram.md)
