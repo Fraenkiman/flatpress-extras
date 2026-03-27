@@ -3,7 +3,7 @@
  * Plugin Name: Mastodon
  * Plugin URI: https://frank-web.dedyn.io
  * Description: Synchronizes FlatPress entries and comments with Mastodon. <a href="./fp-plugins/mastodon/doc_mastodon.txt" title="Instructions" target="_blank">[Instructions]</a>
- * Version: 1.2.1
+ * Version: 1.3.0
  * Author: Fraenkiman
  * Author URI: https://frank-web.dedyn.io
  */
@@ -460,6 +460,150 @@ function plugin_mastodon_normalize_instance_url($url) {
 	}
 	return rtrim($normalized, '/');
 }
+
+/**
+ * Normalize the configured Mastodon username for HTML head metadata.
+ *
+ * Note: The administrator typically stores the local username without a leading
+ * at-sign, but the helper also accepts values such as "@user" or
+ * "@user@example.social" and reduces them to the local username part.
+ *
+ * @param string $username
+ * @return string
+ */
+function plugin_mastodon_normalize_head_username($username) {
+	$username = trim((string) $username);
+	if ($username === '') {
+		return '';
+	}
+
+	$username = ltrim($username, '@');
+	if ($username === '') {
+		return '';
+	}
+
+	$parts = explode('@', $username, 2);
+	$username = trim((string) $parts [0]);
+	if ($username === '') {
+		return '';
+	}
+
+	$username = preg_replace('/\s+/', '', $username);
+	if (!is_string($username)) {
+		return '';
+	}
+
+	$username = trim($username, "/\\");
+	if ($username === '') {
+		return '';
+	}
+
+	return $username;
+}
+
+/**
+ * Return the Mastodon instance authority used in fediverse creator metadata.
+ *
+ * Note: The authority intentionally ignores any optional path component because
+ * the fediverse creator meta tag uses the server name, not a profile path.
+ *
+ * @param string $instanceUrl
+ * @return string
+ */
+function plugin_mastodon_instance_authority($instanceUrl) {
+	$instanceUrl = plugin_mastodon_normalize_instance_url($instanceUrl);
+	if ($instanceUrl === '') {
+		return '';
+	}
+
+	$parts = @parse_url($instanceUrl);
+	if (!is_array($parts) || empty($parts ['host'])) {
+		return '';
+	}
+
+	$host = strtolower((string) $parts ['host']);
+	$port = isset($parts ['port']) ? (int) $parts ['port'] : 0;
+	$scheme = isset($parts ['scheme']) ? strtolower((string) $parts ['scheme']) : 'https';
+	if ($port > 0) {
+		$defaultPort = ($scheme === 'http') ? 80 : 443;
+		if ($port !== $defaultPort) {
+			return $host . ':' . $port;
+		}
+	}
+
+	return $host;
+}
+
+/**
+ * Build the public Mastodon profile URL used for the rel-me link.
+ * @param string $instanceUrl
+ * @param string $username
+ * @return string
+ */
+function plugin_mastodon_profile_url($instanceUrl, $username) {
+	$instanceUrl = plugin_mastodon_normalize_instance_url($instanceUrl);
+	$username = plugin_mastodon_normalize_head_username($username);
+	if ($instanceUrl === '' || $username === '') {
+		return '';
+	}
+
+	return rtrim($instanceUrl, '/') . '/@' . rawurlencode($username);
+}
+
+/**
+ * Build the fediverse creator meta value.
+ * @param string $instanceUrl
+ * @param string $username
+ * @return string
+ */
+function plugin_mastodon_fediverse_creator_value($instanceUrl, $username) {
+	$username = plugin_mastodon_normalize_head_username($username);
+	$authority = plugin_mastodon_instance_authority($instanceUrl);
+	if ($username === '' || $authority === '') {
+		return '';
+	}
+
+	return '@' . $username . '@' . $authority;
+}
+
+/**
+ * Print Mastodon profile metadata into the HTML head.
+ *
+ * Note: The metadata is only emitted when a username is configured. This keeps
+ * the markup quiet on installations that only use the plugin for synchronization.
+ *
+ * @return void
+ */
+function plugin_mastodon_head() {
+	if (defined('ADMIN_PANEL')) {
+		return;
+	}
+
+	$options = plugin_mastodon_get_options();
+	$username = isset($options ['username']) ? (string) $options ['username'] : '';
+	if (plugin_mastodon_normalize_head_username($username) === '') {
+		return;
+	}
+
+	$instanceUrl = isset($options ['instance_url']) ? (string) $options ['instance_url'] : '';
+	$profileUrl = plugin_mastodon_profile_url($instanceUrl, $username);
+	$creator = plugin_mastodon_fediverse_creator_value($instanceUrl, $username);
+	if ($profileUrl === '' || $creator === '') {
+		return;
+	}
+
+	$profileUrl = htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8');
+	$creator = htmlspecialchars($creator, ENT_QUOTES, 'UTF-8');
+
+	echo '
+		<!-- BOF Mastodon head -->
+		<link rel="me" href="' . $profileUrl . '">
+		<meta name="fediverse:creator" content="' . $creator . '">
+		<!-- EOF Mastodon head -->
+	';
+}
+
+add_action('wp_head', 'plugin_mastodon_head', 10);
 
 /**
  * Normalize the configured daily sync time.

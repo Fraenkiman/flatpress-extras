@@ -106,7 +106,7 @@ The plugin stores these configuration values:
   * OAuth authorization code
   * OAuth access token
 
-However, the analyzed code uses the **OAuth access token** for API access.
+However, the code uses the **OAuth access token** for API access.
 
 That means:
 

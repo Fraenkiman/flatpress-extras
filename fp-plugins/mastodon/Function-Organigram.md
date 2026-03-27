@@ -17,6 +17,11 @@ The layout is intentionally hierarchical so responsibilities, call paths, and im
 
 ### 1. Entry points and control flow
 
+- `plugin_mastodon_head()`
+  - read plugin options
+  - normalize Mastodon instance URL and configured username
+  - emit `<link rel="me">` and `<meta name="fediverse:creator">` when a username is configured
+
 - `setup()`
   - `plugin_mastodon_admin_assign()`
 
@@ -65,6 +70,7 @@ The layout is intentionally hierarchical so responsibilities, call paths, and im
 
 ## A. Entry points and admin integration
 
+- `plugin_mastodon_head()` — Emit Mastodon identity metadata into the HTML head when the plugin configuration contains a usable username.
 - `setup()` — Prepare the admin panel and assign Mastodon plugin data to Smarty.
 - `main()` — Return control to the FlatPress admin panel without extra processing.
 - `onsubmit()` — Handle admin form submissions, OAuth actions, configuration saves, and manual synchronization.
@@ -242,6 +248,18 @@ The plugin consists of five major layers:
 
 5. **Transport layer**  
    Handles HTTP, OAuth, Mastodon API endpoints, media uploads, and media downloads.
+
+## Frontend head metadata note
+
+The frontend head integration is intentionally small and configuration-driven:
+
+- it should only run on frontend output, not inside the admin panel
+- it should stay read-only and must not trigger synchronization
+- it depends on the configured Mastodon instance URL and username
+- if no username is configured, the function should emit nothing
+- usernames entered without a leading `@` should still produce:
+  - a profile URL such as `https://mastodon.url/@username`
+  - a creator value such as `@username@mastodon.url`
 
 ## Maintenance notes
 
