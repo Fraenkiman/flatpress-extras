@@ -12,6 +12,10 @@ The plugin synchronizes FlatPress content with one Mastodon account in **both di
 
 The plugin also synchronizes **images** for FlatPress entries and Mastodon statuses.
 
+When the FlatPress **Tag** plugin is active, the plugin also synchronizes **entry tags** in both directions:
+- FlatPress entry tags -> Mastodon hashtags
+- Mastodon hashtags -> FlatPress entry tags
+
 ## Important concept
 
 Mastodon does not have a separate “comment” object in the way a blog does. In practice, comments are represented as **replies**.
@@ -28,7 +32,7 @@ The plugin works with the following mapping:
 
 You need:
 
-- a working FlatPress 1.5 Stringendo installation
+- a working FlatPress 1.5.1 Stringendo installation
 - PHP **7.2 to 8.5**
 - the plugin files from this package
 
@@ -41,6 +45,12 @@ The code uses these PHP features and transports:
 - **JSON**
 - **DOMDocument / libxml** for best HTML-to-BBCode conversion
 - **OpenSSL** to encrypt stored secrets when available
+
+### Optional FlatPress plugin for tag synchronization ###
+
+If you want to synchronize entry tags between FlatPress and Mastodon, also enable:
+
+- the FlatPress **Tag** plugin
 
 ### Recommended but not strictly required
 
@@ -85,6 +95,17 @@ You will see a Mastodon post as a **FlatPress comment** when it is a reply insid
 - There is also a **Run synchronization now** button in the admin panel
 
 In simple words: if nobody visits your FlatPress site after the scheduled time, the automatic sync will wait until the next normal page request.
+
+### Tag support
+
+- Tag synchronization works only when the FlatPress **Tag** plugin is active.
+- FlatPress **entries** can export tags to Mastodon.
+- FlatPress **comments** do not support tags and therefore do not export tags.
+- Mastodon top-level statuses can import hashtags into FlatPress entries.
+- Mastodon replies imported as FlatPress comments do not get tags.
+- FlatPress tags are synchronized to Mastodon as **hashtags** with a leading `#`.
+- Mastodon hashtags are synchronized to FlatPress **without** the leading `#`.
+- If tags are removed on FlatPress or on Mastodon, the next synchronization updates the other side accordingly.
 
 ### Media support
 
@@ -283,6 +304,16 @@ If a FlatPress comment contains a valid parent comment reference, it is exported
 
 This keeps reply chains threaded on Mastodon.
 
+### Tag export
+
+When the FlatPress **Tag** plugin is active, the plugin reads the local entry tags and appends them to the exported Mastodon entry:
+
+- on a **new line**
+- at the **end** of the Mastodon entry
+- as Mastodon **hashtags** with a leading `#`
+- If no tags exist, no hashtag line is added.
+- If tags were removed from the FlatPress entry, the next update of the already synchronized Mastodon status removes that hashtag line again.
+
 ### Image export
 
 For FlatPress entries, the plugin detects:
@@ -314,6 +345,7 @@ The imported FlatPress entry contains:
 - the Mastodon author name
 - the Mastodon timestamp
 - a footer link back to Mastodon
+- synchronized tags from the Mastodon status, when the FlatPress **Tag** plugin is active
 
 ### Comment import
 
@@ -322,6 +354,15 @@ Replies from the imported Mastodon thread are imported as FlatPress comments.
 The plugin reads the thread context of the imported top-level status and imports descendant replies.
 
 If a reply is itself a reply to another reply, the plugin stores the local parent relation with `replyto`, so the reply structure is preserved in data.
+
+### Tag import ===
+
+When the FlatPress **Tag** plugin is active, the plugin imports Mastodon hashtags into the FlatPress entry:
+
+- Mastodon hashtags are stored as FlatPress entry tags
+- the leading `#` is removed
+- only entry imports use tags; imported comments do not
+- If tags were removed from the Mastodon status, the next allowed update of the synchronized FlatPress entry removes the corresponding local tags again.
 
 ### Image import
 
@@ -408,6 +449,15 @@ Then check:
 
 - `fp-content/mastodon/sync.log`
 - the counters in the plugin admin page
+
+### Tags are missing or not updated
+
+Check these points:
+
+- Is the FlatPress **Tag** plugin enabled?
+- Are you synchronizing an **entry** and not a comment?
+- Were the tags removed on one side and has a new sync already been run?
+- Is the option to update existing local content from Mastodon enabled when you expect remote tag deletions or remote tag changes to update an already imported FlatPress entry?
 
 ### Images are missing on Mastodon
 
