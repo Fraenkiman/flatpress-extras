@@ -3,7 +3,7 @@
  * Plugin Name: Mastodon
  * Plugin URI: https://frank-web.dedyn.io
  * Description: Synchronizes FlatPress entries and comments with Mastodon. <a href="./fp-plugins/mastodon/doc_mastodon.txt" title="Instructions" target="_blank">[Instructions]</a>
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: Fraenkiman
  * Author URI: https://frank-web.dedyn.io
  */
@@ -621,7 +621,6 @@ function plugin_mastodon_normalize_sync_time($time) {
 	}
 	return str_pad((string) $hour, 2, '0', STR_PAD_LEFT) . ':' . str_pad((string) $minute, 2, '0', STR_PAD_LEFT);
 }
-
 
 /**
  * Normalize the configured sync start date.
@@ -1315,6 +1314,221 @@ function plugin_mastodon_lang_string($key, $default) {
 }
 
 /**
+ * Determine whether the Tag plugin is active for the current FlatPress request.
+ *
+ * The Tag plugin exposes entry tags through [tag]...[/tag] BBCode and updates its
+ * tag database on the publish_post hook. The Mastodon plugin only syncs tags when
+ * the Tag plugin is actually active, otherwise entry content stays untouched.
+ *
+ * @return bool
+ */
+function plugin_mastodon_tag_plugin_active() {
+	return class_exists('plugin_tag_entry') && isset($GLOBALS ['plugin_tag']) && is_object($GLOBALS ['plugin_tag']);
+}
+
+/**
+ * Normalize a list of tag labels.
+ *
+ * @param array<int, string> $tags
+ * @return array<int, string>
+ */
+function plugin_mastodon_normalize_tag_list($tags) {
+	$normalized = array();
+	$seen = array();
+
+	foreach ((array) $tags as $tag) {
+		$tag = trim((string) $tag);
+		$tag = ltrim($tag, "# \t\n\r\0\x0B");
+		if ($tag === '') {
+			continue;
+		}
+		$key = function_exists('mb_strtolower') ? mb_strtolower($tag, 'UTF-8') : strtolower($tag);
+		if (isset($seen [$key])) {
+			continue;
+		}
+		$seen [$key] = true;
+		$normalized [] = $tag;
+	}
+
+	return $normalized;
+}
+
+/**
+ * Extract FlatPress Tag plugin labels from an entry body.
+ *
+ * The Tag plugin stores tags inside [tag]...[/tag] BBCode blocks. Each block
+ * contains a comma-separated list. The same semantics are used here so export
+ * and import match the Tag plugin's own publish_post processing.
+ *
+ * @param string $content
+ * @return array<int, string>
+ */
+function plugin_mastodon_extract_flatpress_tags($content) {
+	$content = (string) $content;
+	if ($content === '' || stripos($content, '[tag') === false) {
+		return array();
+	}
+
+	$tags = array();
+	if (preg_match_all('!\[tag\](.*?)\[/tag\]!is', $content, $matches) && !empty($matches[1])) {
+		foreach ($matches [1] as $tagGroup) {
+			$parts = explode(',', (string) $tagGroup);
+			foreach ($parts as $part) {
+				$tags [] = (string) $part;
+			}
+		}
+	}
+
+	return plugin_mastodon_normalize_tag_list($tags);
+}
+
+/**
+ * Remove Tag plugin BBCode blocks from entry content.
+ *
+ * @param string $content
+ * @return string
+ */
+function plugin_mastodon_strip_flatpress_tag_bbcode($content) {
+	$content = preg_replace('!\n?\[tag\].*?\[/tag\]\n?!is', "\n", (string) $content);
+	$content = str_replace(array("\r\n", "\r"), "\n", (string) $content);
+	$content = preg_replace("/\n{3,}/", "\n\n", (string) $content);
+	return trim((string) $content);
+}
+
+/**
+ * Convert FlatPress tag labels into a Mastodon hashtag footer line.
+ *
+ * Mastodon exposes status tags as strings without the leading hash sign, while
+ * the visible status text uses #hashtag tokens. Local FlatPress tags are therefore
+ * normalized into safe hashtag tokens and emitted as a single footer line.
+ *
+ * @param array<int, string> $tags
+ * @return string
+ */
+function plugin_mastodon_mastodon_hashtag_footer($tags) {
+	$tokens = array();
+
+	foreach (plugin_mastodon_normalize_tag_list($tags) as $tag) {
+		$token = preg_replace('/\s+/u', '', $tag);
+		$token = trim((string) $token);
+		if ($token === '') {
+			continue;
+		}
+		$tokens [] = '#' . $token;
+	}
+
+	return trim(implode(' ', array_unique($tokens)));
+}
+
+/**
+ * Collect remote Mastodon tags from a status entity.
+ *
+ * @param array<string, mixed> $remoteStatus
+ * @return array<int, string>
+ */
+function plugin_mastodon_remote_status_tags($remoteStatus) {
+	$tags = array();
+
+	if (!empty($remoteStatus ['tags']) && is_array($remoteStatus ['tags'])) {
+		foreach ($remoteStatus ['tags'] as $remoteTag) {
+			if (is_array($remoteTag) && !empty($remoteTag ['name'])) {
+				$tags [] = (string) $remoteTag ['name'];
+			} elseif (is_string($remoteTag)) {
+				$tags [] = $remoteTag;
+			}
+		}
+	}
+
+	return plugin_mastodon_normalize_tag_list($tags);
+}
+
+/**
+ * Remove a trailing Mastodon hashtag footer from imported plain text.
+ *
+ * Exported FlatPress tags are appended as a dedicated hashtag line. When such a
+ * status is imported back, that trailing hashtag-only line is converted back into
+ * Tag plugin metadata instead of staying visible in the FlatPress entry body.
+ *
+ * @param string $content
+ * @param array<int, string> $remoteTags
+ * @return string
+ */
+function plugin_mastodon_strip_trailing_mastodon_hashtag_footer($content, $remoteTags) {
+	$content = trim((string) $content);
+	$remoteTags = plugin_mastodon_normalize_tag_list($remoteTags);
+	if ($content === '' || empty($remoteTags)) {
+		return $content;
+	}
+
+	$normalizedRemote = array();
+	foreach ($remoteTags as $tag) {
+		$key = function_exists('mb_strtolower') ? mb_strtolower($tag, 'UTF-8') : strtolower($tag);
+		$normalizedRemote [$key] = true;
+	}
+
+	$lines = preg_split("/\r\n|\r|\n/", $content);
+	if (!is_array($lines) || empty($lines)) {
+		return $content;
+	}
+
+	$index = count($lines) - 1;
+	while ($index >= 0 && trim((string) $lines [$index]) === '') {
+		$index--;
+	}
+	if ($index < 0) {
+		return '';
+	}
+
+	$footerLine = trim((string) $lines [$index]);
+	if ($footerLine === '') {
+		return $content;
+	}
+
+	$tokens = preg_split('/\s+/u', $footerLine);
+	if (!is_array($tokens) || empty($tokens)) {
+		return $content;
+	}
+
+	$matched = array();
+	foreach ($tokens as $token) {
+		$token = trim((string) $token);
+		if ($token === '' || strpos($token, '#') !== 0) {
+			return $content;
+		}
+		$token = ltrim($token, '#');
+		if ($token === '') {
+			return $content;
+		}
+		$key = function_exists('mb_strtolower') ? mb_strtolower($token, 'UTF-8') : strtolower($token);
+		if (!isset($normalizedRemote [$key])) {
+			return $content;
+		}
+		$matched [$key] = true;
+	}
+
+	if (empty($matched)) {
+		return $content;
+	}
+
+	array_splice($lines, $index, 1);
+	return trim((string) preg_replace("/\n{3,}/", "\n\n", implode("\n", $lines)));
+}
+
+/**
+ * Build Tag plugin BBCode from a list of remote Mastodon tags.
+ *
+ * @param array<int, string> $tags
+ * @return string
+ */
+function plugin_mastodon_build_flatpress_tag_bbcode($tags) {
+	$tags = plugin_mastodon_normalize_tag_list($tags);
+	if (empty($tags)) {
+		return '';
+	}
+	return '[tag]' . implode(', ', $tags) . '[/tag]';
+}
+
+/**
  * Convert an emoticon HTML entity into a Unicode character.
  * @param string $value
  * @return string
@@ -1896,6 +2110,9 @@ function plugin_mastodon_flatpress_to_mastodon($text) {
 	$text = plugin_mastodon_replace_emoticon_shortcodes_with_unicode((string) $text);
 	if ($text === '') {
 		return '';
+	}
+	if (plugin_mastodon_tag_plugin_active()) {
+		$text = plugin_mastodon_strip_flatpress_tag_bbcode($text);
 	}
 
 	$text = preg_replace_callback(
@@ -3458,6 +3675,36 @@ function plugin_mastodon_build_entry_status_text($entryId, $entry, $charLimit) {
 
 	$text = trim(implode("\n\n", $parts));
 	$link = plugin_mastodon_public_url_for_mastodon(plugin_mastodon_public_entry_url($entryId, $entry));
+	$hashtags = '';
+	if (plugin_mastodon_tag_plugin_active()) {
+		$hashtags = plugin_mastodon_mastodon_hashtag_footer(plugin_mastodon_extract_flatpress_tags($content));
+	}
+
+	if ($hashtags !== '') {
+		$suffixParts = array();
+		if ($link !== '') {
+			$suffixParts [] = $link;
+		}
+		$suffixParts [] = $hashtags;
+		$suffix = implode("\n", $suffixParts);
+		$suffixLength = function_exists('mb_strlen') ? mb_strlen($suffix, 'UTF-8') : strlen($suffix);
+		$separatorLength = $text !== '' ? 1 : 0;
+		$available = $charLimit - $separatorLength - $suffixLength;
+		if ($available >= 32) {
+			$text = trim((string) plugin_mastodon_limit_text($text, $available));
+			$text = $text === '' ? $suffix : $text . "\n" . $suffix;
+			return trim((string) $text);
+		}
+
+		$suffixLength = function_exists('mb_strlen') ? mb_strlen($hashtags, 'UTF-8') : strlen($hashtags);
+		$available = $charLimit - $separatorLength - $suffixLength;
+		if ($available >= 32) {
+			$text = trim((string) plugin_mastodon_limit_text($text, $available));
+			$text = $text === '' ? $hashtags : $text . "\n" . $hashtags;
+			return trim((string) $text);
+		}
+	}
+
 	if ($link !== '') {
 		$available = $charLimit - 1 - (function_exists('mb_strlen') ? mb_strlen($link, 'UTF-8') : strlen($link));
 		if ($available < 32) {
@@ -3527,6 +3774,10 @@ function plugin_mastodon_import_remote_entry(&$options, &$state, $remoteStatus) 
 	}
 
 	$content = plugin_mastodon_mastodon_html_to_flatpress(isset($remoteStatus ['content']) ? $remoteStatus ['content'] : '');
+	$remoteTags = plugin_mastodon_remote_status_tags($remoteStatus);
+	if (plugin_mastodon_tag_plugin_active()) {
+		$content = plugin_mastodon_strip_trailing_mastodon_hashtag_footer($content, $remoteTags);
+	}
 	$mediaBbcode = plugin_mastodon_build_imported_media_bbcode($options, $remoteStatus);
 	if ($mediaBbcode !== '') {
 		$content = trim($content . $mediaBbcode);
@@ -3549,6 +3800,12 @@ function plugin_mastodon_import_remote_entry(&$options, &$state, $remoteStatus) 
 		$footer = "[url=" . $url . ']Mastodon[/url]';
 	}
 	$entryContent = trim((string) $content);
+	if (plugin_mastodon_tag_plugin_active()) {
+		$tagBbcode = plugin_mastodon_build_flatpress_tag_bbcode($remoteTags);
+		if ($tagBbcode !== '') {
+			$entryContent = $entryContent === '' ? $tagBbcode : $entryContent . "\n\n" . $tagBbcode;
+		}
+	}
 	if ($footer !== '') {
 		$entryContent = $entryContent === '' ? $footer : $entryContent . "\n" . $footer;
 	}
