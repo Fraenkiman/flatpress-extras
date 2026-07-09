@@ -14,7 +14,6 @@ A few of them are known to be not functional correctly, some others have still t
 | [akismet](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/akismet) | Minimizes spam in comments using the [Akismet service](https://akismet.com/). | ✔️ Works fine! :) |
 | [ajaxadmin](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/ajaxadmin) |  | ❔ *unknown* |
 | [ckeditor](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/ckeditor) | CKEditor 4 is a powerful WYSIWYG HTML editor. | ✔️ Works fine! :) |
-| [datechanger](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/datechanger) | Lets you change the publish date for (new) entries. | ✔️ Works fine! :) |
 | [downloadctr](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/downloadctr) | Adds a BBCode "download" tag for a download counter | ✔️ Works fine! :) |
 | [frontpage](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/frontpage) | Sets a default category to display on the front page. | ✔️ Works fine! :) |
 | [iCalFeed](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/icalfeed) | Display upcoming appointments or availability from one or more iCalendar (ICS) feeds. | ✔️ Works fine! :) |
@@ -22,12 +21,10 @@ A few of them are known to be not functional correctly, some others have still t
 | [lastcommentsadmin](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/lastcommentsadmin) | Manage the cache of the LastComments plugin. | ✔️ Works fine! :) |
 | [macros](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/macros) |  | ❔ *unknown* |
 | [markdown](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/markdown) | Provides [Markdown](http://daringfireball.net/projects/markdown/) markup in posts. | ✔️ Works fine! :) |
-| [Mastodon](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/mastodon) | Synchronizes FlatPress entries and comments with Mastodon. | ✔️ Works fine! :) |
 | [moreonblog](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/moreonblog) | The widget displays links to the other random posts on the blog. | ✔️ Works from 4 entries! |
 | [ping](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/ping) |  | ❔ *unknown* |
 | [remoteposting](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/remoteposting) |  | ❔ *unknown* |
 | [rssfeed](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/rssfeed) | Enables a widget with a subscribe button. | ✔️ Works fine! :) |
-| [tag](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/tag) | This plugin lets you add tags to your blog entries. | ✔️ Works fine! :) |
 | [quickgallery](https://github.com/flatpressblog/flatpress-extras/tree/master/fp-plugins/quickgallery) |  | ❔ *unknown* |
 
 ## Tools
